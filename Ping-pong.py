@@ -42,19 +42,16 @@ class Paddle:
 
 class Ball:
     def __init__(self):
-        self.rect = pygame.Rect(WIDTH // 2 - BALL_SIZE // 2, HEIGHT // 2 - BALL_SIZE // 2, BALL_SIZE, BALL_SIZE)
-        self.dx = BALL_SPEED * random.choice([-1, 1])
-        self.dy = BALL_SPEED * random.choice([-1, 1])
-    
+        self.reset()
+
     def move(self):
         self.rect.x += self.dx
         self.rect.y += self.dy
 
     def reset(self):
-        self.rect.x = WIDTH // 2 - BALL_SIZE // 2
-        self.rect.y = HEIGHT // 2 - BALL_SIZE // 2
-        self.dx *= random.choice([-1, 1])
-        self.dy *= random.choice([-1, 1])
+        self.rect = pygame.Rect(WIDTH // 2 - BALL_SIZE // 2, HEIGHT // 2 - BALL_SIZE // 2, BALL_SIZE, BALL_SIZE)
+        self.dx = BALL_SPEED * random.choice([-1, 1])
+        self.dy = BALL_SPEED * random.choice([-1, 1])
 
 def main():
     clock = pygame.time.Clock()
@@ -63,7 +60,7 @@ def main():
     finish = False
     score1 = 0
     score2 = 0
-    max_score = 9  # Define maximum score for game over
+    max_score = 9
 
     paddle1 = Paddle(10, HEIGHT // 2 - PADDLE_HEIGHT // 2)
     paddle2 = Paddle(WIDTH - 20, HEIGHT // 2 - PADDLE_HEIGHT // 2)
@@ -91,7 +88,7 @@ def main():
 
         keys = pygame.key.get_pressed()
         if not paused and not finish:
-            # Paddle movement
+            # Движение ракеток
             if keys[pygame.K_w]:
                 paddle1.move(-PADDLE_SPEED)
             if keys[pygame.K_s]:
@@ -101,63 +98,58 @@ def main():
             if keys[pygame.K_DOWN]:
                 paddle2.move(PADDLE_SPEED)
 
-            # Ball movement
+            # Движение мяча
             ball.move()
 
-            # Ball collision with the edges
+            # Обработка столкновений мяча с краями
             if ball.rect.top <= 0 or ball.rect.bottom >= HEIGHT:
                 rebound.play()
                 ball.dy *= -1
 
-            # Ball collision with paddles
-            if ball.rect.colliderect(paddle1.rect) or ball.rect.colliderect(paddle2.rect):
+            # Обработка столкновений мяча с ракетками
+            if ball.rect.colliderect(paddle1) or ball.rect.colliderect(paddle2):
                 rebound.play()
                 ball.dx *= -1
-                angle = random.randint(35, 55)
-                ball.dy = BALL_SPEED * (random.choice([1, -1]) * (angle / 90))
 
-            # Scoring
-            if ball.rect.x < 15 or ball.rect.x > WIDTH - 15:
+            # Обработка случайного счета
+            if ball.rect.left <= 0:
+                score2 += 1
                 score.play()
-                if ball.rect.x < 15:
-                    score2 += 1
-                else:
-                    score1 += 1
+                ball.reset()
+            elif ball.rect.right >= WIDTH:
+                score1 += 1
+                score.play()
                 ball.reset()
 
-
-            # Game over check
-            if score1 >= max_score or score2 >= max_score:
-                paused = True  # Pause the game when there's a winner
+            # Определение завершения игры
+            if score1 == max_score or score2 == max_score:
                 finish = True
-                if score1 >= max_score:
-                    winner_text = "Игрок 1 выиграл!"  
-                else:
-                    winner_text = "Игрок 2 выиграл!" 
-                game_over_text = font_pause.render(winner_text, True, WHITE)
-            else:
-                game_over_text = None
 
-        # Render
+        # Отрисовка
         screen.fill(BG_COLOR)
         pygame.draw.rect(screen, WHITE, paddle1.rect)
         pygame.draw.rect(screen, WHITE, paddle2.rect)
         pygame.draw.ellipse(screen, WHITE, ball.rect)
+        pygame.draw.aaline(screen, WHITE, (WIDTH // 2, 0), (WIDTH // 2, HEIGHT))
 
-        # Display score
-        score_text = font_score.render(f"{score1}:{score2}", True, WHITE)
-        screen.blit(score_text, (WIDTH // 2 - score_text.get_width() // 2, 15))
+        # Отображение счета
+        score_display = font_score.render(f'{score1} : {score2}', True, WHITE)
+        screen.blit(score_display, (WIDTH // 2 - score_display.get_width() // 2, 20))
 
-        # Show pause message
-        if paused and not finish:
-            pause_text = font_pause.render("ПАУЗА", True, WHITE)
+        # Отображение паузы
+        if paused:
+            pause_text = font_pause.render('Пауза', True, WHITE)
             screen.blit(pause_text, (WIDTH // 2 - pause_text.get_width() // 2, HEIGHT // 2 - pause_text.get_height() // 2))
-        if game_over_text:
-            pygame.mixer.music.pause()
-            screen.blit(game_over_text, (WIDTH // 2 - game_over_text.get_width() // 2, HEIGHT // 2 + 50))
-        else:
-            if not paused and not finish:
-                pygame.mixer.music.unpause()
+
+        # Отображение окончания игры
+        if finish:
+            finish_text = font_pause.render('Игра окончена,', True, WHITE)
+            screen.blit(finish_text, (WIDTH // 2 - finish_text.get_width() // 2, HEIGHT // 2 - finish_text.get_height() // 2))
+            if score1 > score2:
+                restart_text = font_pause.render('Игрок №1 победил!', True, WHITE)
+            else:
+                restart_text = font_pause.render('Игрок №1 победил!', True, WHITE)
+            screen.blit(restart_text, (WIDTH // 2 - restart_text.get_width() // 2, HEIGHT // 2 + 50))
 
         pygame.display.flip()
         clock.tick(FPS)
